@@ -49,6 +49,7 @@ set(PROJ_LIBS
    ${OPENGL_LIBRARY}
 
    GLEW
+   dl
 )
 set(PROJ_DEBUG_LIBS
     ${PROJ_LIBS}
