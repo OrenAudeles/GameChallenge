@@ -8,30 +8,6 @@ set(PROJ_DEBUG ${APPNAME}_debug)
 project(${PROJ})
 project(${PROJ_DEBUG})
 
-message(STATUS "Searching for SDL2")
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
-
-if (NOT SDL2_FOUND)
-    message(FATAL_ERROR "This project requires SDL2 to be installed to be compiled")
-endif (NOT SDL2_FOUND)
-
-if (NOT SDL2_IMAGE_FOUND)
-
-endif (NOT SDL2_IMAGE_FOUND)
-
-message(STATUS "SDL2 Include Dir: ${SDL2_INCLUDE_DIR}")
-
-find_package(OpenGL REQUIRED)
-
-include_directories(
-    ${SDL2_INCLUDE_DIR}
-    ${SDL2_IMAGE_INCLUDE_DIRS}
-    .
-)
-
-add_definitions( -DGLEW_STATIC)
-
 set(SOURCES
     main.cpp
 )
@@ -42,13 +18,7 @@ set(ALL_SOURCES
 add_executable(${PROJ} ${ALL_SOURCES})
 add_executable(${PROJ_DEBUG} ${ALL_SOURCES})
 
-message(STATUS "SDL2 Lib Path: ${SDL2_LIBRARY}")
 set(PROJ_LIBS
-   ${SDL2_LIBRARY}
-   ${SDL2_IMAGE_LIBRARIES}
-   ${OPENGL_LIBRARY}
-
-   GLEW
    dl
 )
 set(PROJ_DEBUG_LIBS

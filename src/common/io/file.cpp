@@ -53,17 +53,3 @@ namespace io{ namespace file{
 		return sz;
 	}
 }}
-
-struct api_file_t get_file_api(void){
-	struct api_file_t result = {0};
-
-#define API(fn) result.fn = io::file::fn
-	API(exists);
-	API(size);
-	API(write);
-	API(append);
-	API(read);
-#undef API
-
-	return result;
-}
