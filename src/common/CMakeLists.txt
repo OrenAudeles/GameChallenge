@@ -38,13 +38,17 @@ set(PROJ_LIBS
 
 add_library(${LIB_NAME} SHARED
 	./api.cpp
-	
+
 	./io/file.cpp
 
 	./graphics/image_SDL.cpp
 	./graphics/shader.c
 	./graphics/texture.c
 	./graphics/renderer.cpp
+
+	./event/event_handler.cpp
+	./event/event_SDL.cpp
+	
 )
 
 set_target_properties(${LIB_NAME} PROPERTIES
@@ -54,3 +58,13 @@ set_target_properties(${LIB_NAME} PROPERTIES
 
 target_include_directories(${LIB_NAME} PRIVATE .)
 target_link_libraries(${LIB_NAME} ${PROJ_LIBS})
+
+
+if (CMAKE_COMPILER_IS_GNUCC)
+# PROJ
+    set_property( TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS " -Wall")
+    set_property( TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS " -Wpedantic")
+    set_property( TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS " -O2")
+    set_property( TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS " -fno-exceptions")
+    set_property( TARGET ${LIB_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS " -Werror")
+endif (CMAKE_COMPILER_IS_GNUCC)

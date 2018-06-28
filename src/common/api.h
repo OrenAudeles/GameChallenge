@@ -29,9 +29,22 @@ struct api_graphics_t{
 	void          (*drawable_size)   (int& width, int& height);
 };
 
+struct api_event_t{
+	void (*initialize_handler)(void);
+	void (*shutdown_handler)(void);
+
+	void (*set_event_handler)(int event_id, void (*ev_function)(void*));
+	void (*call_event_handler)(int event_id, void* event_data);
+
+	void (*poll_events)(void);
+	void (*wait_events)(void);
+	void (*wait_events_timeout)(float timeout);
+};
+
 struct api_common_t{
-	api_file_t file;
+	api_file_t     file;
 	api_graphics_t graphics;
+	api_event_t    event;
 };
 
 extern "C" api_common_t get_common_api(void);

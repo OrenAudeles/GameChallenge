@@ -2,6 +2,7 @@
 
 #include "io/file.h"
 #include "graphics/renderer.h"
+#include "event/event.h"
 
 struct api_file_t get_file_api(void){
 	struct api_file_t result = {0};
@@ -17,23 +18,6 @@ struct api_file_t get_file_api(void){
 	return result;
 }
 
-/*
-struct api_graphics_t{
-	void          (*initialize)      (int width, int height, const char* title, bool resizable);
-	void          (*shutdown)        (void);
-	bool          (*running)         (void);
-	void          (*close_window)    (void);
-	RenderWindow* (*get_window)      (void);
-	void          (*begin_render)    (void);
-	void          (*end_render)      (void);
-	void          (*clear)           (void);
-	void          (*set_clear_color) (uint8_t r, uint8_t g, uint8_t b);
-	void          (*set_window_title)(const char* title);
-	void          (*viewport)        (int left_x, int top_y, int width, int height);
-	void          (*window_size)     (int& width, int& height);
-	void          (*drawable_size)   (int& width, int& height);
-};
-*/
 struct api_graphics_t get_graphics_api(void){
 	api_graphics_t result = {0};
 
@@ -56,11 +40,28 @@ struct api_graphics_t get_graphics_api(void){
 	return result;
 }
 
+struct api_event_t get_event_api(void){
+	api_event_t result = {0};
+
+#define API(fn) result.fn = event::fn
+	API(initialize_handler);
+	API(shutdown_handler);
+	API(set_event_handler);
+	API(call_event_handler);
+	API(poll_events);
+	API(wait_events);
+	API(wait_events_timeout);
+#undef API
+
+	return result;
+}
+
 api_common_t get_common_api(void){
 	api_common_t result = {0};
 
 	result.file = get_file_api();
 	result.graphics = get_graphics_api();
+	result.event = get_event_api();
 
 	return result;
 }
