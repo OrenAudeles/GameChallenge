@@ -41,10 +41,41 @@ struct api_event_t{
 	void (*wait_events_timeout)(float timeout);
 };
 
+struct api_shader_t{
+	uint32_t (*create_program)(void* vsource, void* fsource, void* gsource, int vlen, int flen, int glen);
+	void (*destroy_program)(uint32_t prog);
+	void (*use_program)(uint32_t prog);
+
+	void (*set_bool)(uint32_t prog, const char* name, const int value);
+	void (*set_int)(uint32_t prog, const char* name, const int32_t value);
+	void (*set_float)(uint32_t prog, const char* name, const float value);
+
+	void (*set_vec2)(uint32_t prog, const char* name, const float x, const float y);
+	void (*set_vec3)(uint32_t prog, const char* name, const float x, const float y, const float z);
+	void (*set_vec4)(uint32_t prog, const char* name, const float x, const float y, const float z, const float w);
+
+	void (*set_vec2v)(uint32_t prog, const char* name, const float* value);
+	void (*set_vec3v)(uint32_t prog, const char* name, const float* value);
+	void (*set_vec4v)(uint32_t prog, const char* name, const float* value);
+
+	void (*set_mat2)(uint32_t prog, const char* name, const float* value);
+	void (*set_mat3)(uint32_t prog, const char* name, const float* value);
+	void (*set_mat4)(uint32_t prog, const char* name, const float* value);
+};
+struct api_texture_t{
+	uint32_t (*create)(void* tex_data, uint32_t tex_len);
+	uint32_t (*create_alpha)(void* tex_data, uint32_t tex_len);
+
+	void (*destroy)(uint32_t tex);
+	void (*bind)(const uint32_t tex);
+};
+
 struct api_common_t{
 	api_file_t     file;
 	api_graphics_t graphics;
 	api_event_t    event;
+	api_shader_t   shader;
+	api_texture_t  texture;
 };
 
 extern "C" api_common_t get_common_api(void);
