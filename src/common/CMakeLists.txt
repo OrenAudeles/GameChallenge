@@ -40,11 +40,14 @@ add_library(${LIB_NAME} SHARED
 	./api.cpp
 
 	./io/file.cpp
+  ./io/file_find.cpp
 
 	./graphics/image_SDL.cpp
 	./graphics/shader.c
 	./graphics/texture.c
 	./graphics/renderer.cpp
+
+	./graphics/render_buffer_SDL.cpp
 
 	./event/event_handler.cpp
 	./event/event_SDL.cpp

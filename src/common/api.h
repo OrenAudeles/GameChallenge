@@ -5,6 +5,9 @@
 #include <inttypes.h>
 
 struct RenderWindow;
+struct render_glyph;
+struct render_clip;
+struct uv_quad;
 
 struct api_file_t{
 	bool     (*exists)(const char* path);
@@ -12,6 +15,9 @@ struct api_file_t{
 	bool     (*write) (const char* path, void* data, uint32_t bytes);
 	bool     (*append)(const char* path, void* data, uint32_t bytes);
 	uint32_t (*read)  (const char* path, void* store, uint32_t bytes);
+
+	uint32_t (*find)(const char* root, const char* ext, void* store, uint32_t store_bytes, uint32_t& store_bytes_used);
+	uint32_t (*find_recursive)(const char* root, const char* ext, void* store, uint32_t store_bytes, uint32_t& store_bytes_used);
 };
 struct api_graphics_t{
 	void          (*initialize)      (int width, int height, const char* title, bool resizable);
@@ -70,12 +76,33 @@ struct api_texture_t{
 	void (*bind)(const uint32_t tex);
 };
 
+struct api_render_buffer_t{
+	void (*initialize)(uint8_t layers, uint32_t max_glyphs, uint32_t shader, uint32_t texture);
+	void (*shutdown)(void);
+	void (*clear)(uint16_t width, uint16_t height);
+	void (*render)(void);
+	void (*set_layer)(uint8_t layer);
+
+	void (*push_clip)(render_clip& clip);
+	void (*push_refine_clip)(render_clip& clip);
+	void (*pop_clip)(void);
+
+	const render_clip& (*current_clip)(void);
+
+	void (*push_glyphs)(render_glyph* glyph, uint32_t count);
+	void (*push_alpha_glyphs)(render_glyph* glyph, uint32_t count, uint8_t fg_alpha, uint8_t bg_alpha);
+	void (*push_RGBA_glyphs)(render_glyph* glyph, uint32_t count, uint8_t* fg, uint8_t* bg);
+
+	void (*push_RGBA_glyphs_ex)(render_glyph* glyphs, uint32_t count, uv_quad* uv, uint8_t* fg, uint8_t* bg);
+};
+
 struct api_common_t{
-	api_file_t     file;
-	api_graphics_t graphics;
-	api_event_t    event;
-	api_shader_t   shader;
-	api_texture_t  texture;
+	api_file_t          file;
+	api_graphics_t      graphics;
+	api_event_t         event;
+	api_shader_t        shader;
+	api_texture_t       texture;
+	api_render_buffer_t buffer;
 };
 
 extern "C" api_common_t get_common_api(void);

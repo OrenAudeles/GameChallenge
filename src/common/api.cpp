@@ -5,6 +5,7 @@
 #include "graphics/renderer.h"
 #include "graphics/shader.h"
 #include "graphics/texture.h"
+#include "graphics/render_buffer.h"
 
 struct api_file_t get_file_api(void){
 	struct api_file_t result = {0};
@@ -15,6 +16,9 @@ struct api_file_t get_file_api(void){
 	API(write);
 	API(append);
 	API(read);
+
+	API(find);
+	API(find_recursive);
 #undef API
 
 	return result;
@@ -90,6 +94,26 @@ struct api_texture_t get_texture_api(void){
 	return result;
 }
 
+struct api_render_buffer_t get_buffer_api(void){
+	api_render_buffer_t result = {0};
+#define API(fn) result.fn = render::buffer::fn
+	API(initialize);
+	API(shutdown);
+	API(clear);
+	API(render);
+	API(set_layer);
+	API(push_clip);
+	API(push_refine_clip);
+	API(pop_clip);
+	API(current_clip);
+	API(push_glyphs);
+	API(push_alpha_glyphs);
+	API(push_RGBA_glyphs);
+	API(push_RGBA_glyphs_ex);
+#undef API
+	return result;
+}
+
 api_common_t get_common_api(void){
 	api_common_t result = {0};
 
@@ -98,6 +122,7 @@ api_common_t get_common_api(void){
 	result.event = get_event_api();
 	result.shader = get_shader_api();
 	result.texture = get_texture_api();
+	result.buffer = get_buffer_api();
 
 	return result;
 }
