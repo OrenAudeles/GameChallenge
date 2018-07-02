@@ -23,4 +23,6 @@ namespace render{
 	void viewport(int left_x, int top_y, int width, int height);
 	void window_size(int& width, int& height);
 	void drawable_size(int& width, int& height);
+
+	float time_now(void);
 }

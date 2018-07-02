@@ -41,6 +41,7 @@ struct api_graphics_t get_graphics_api(void){
 	API(viewport);
 	API(window_size);
 	API(drawable_size);
+	API(time_now);
 #undef API
 
 	return result;

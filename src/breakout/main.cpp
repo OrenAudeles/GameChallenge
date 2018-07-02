@@ -1,9 +1,11 @@
 #include <dlfcn.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "common/io/file.h"
 #include "common/event/event.h"
 #include "common/event/event_SDL_enum.h"
+#include "common/event/event_SDL_type.h"
 #include "common/api.h"
 #include "common/graphics/render_buffer.h"
 
@@ -47,6 +49,13 @@ void unload_dynamic_libraries(void){
 EVENT_FN(quit){
 	challenge_api.graphics.close_window();
 }
+EVENT_FN(key_down){
+	SDL_Event* ev = (SDL_Event*)data;
+
+	switch(ev->key.keysym.sym){
+		case SDLK_ESCAPE: { EVENT_NAME(quit)(ev); break; }
+	}
+}
 
 uint32_t load_shader(const char*, const char*);
 uint32_t load_texture(const char*);
@@ -59,11 +68,12 @@ int main(int argc, const char** argv){
 
 	// Load shader/texture
 	uint32_t shader = load_shader("./resource/codepage.vs", "./resource/codepage.fs");
-	uint32_t texture = load_texture("./resource/codepage.png");
+	uint32_t texture = load_texture("./resource/codepage_open.png");
 
 	challenge_api.buffer.initialize(1, 1024, shader, texture);
 
 	challenge_api.event.set_event_handler(SDL_QUIT, EVENT_NAME(quit));
+	challenge_api.event.set_event_handler(SDL_KEYDOWN, EVENT_NAME(key_down));
 
 	// {
 	// 	using namespace std::this_thread;
@@ -83,8 +93,64 @@ int main(int argc, const char** argv){
 	render_glyph glyph;
 	glyph.x = glyph.y = 0;
 
+	struct Clock_t{
+		float last, now;
+		inline Clock_t(): last(0), now(challenge_api.graphics.time_now()){}
+		inline float delta(void){ return now - last; }
+		inline float delta_tick(void){ last = now; now = challenge_api.graphics.time_now(); return delta(); }
+	} clock;
+
+	float accum = 0;
+	int frames = 0;
+
+	char fps_buf[80] = "Unknown Frame Time, not enough samples";
+
+	float glyph_uv_patch[] = {0, 0, 1, 160.f/260.f};
+
+	auto render_single_glyph = [&](render_glyph glyph, uint8_t* fg, uint8_t* bg){
+		uv_quad uv = {
+			glyph_uv_patch[0] + ((glyph_uv_patch[2] - glyph_uv_patch[0]) / 16.f * (glyph.id % 16)),
+			glyph_uv_patch[1] + ((glyph_uv_patch[3] - glyph_uv_patch[1]) / 16.f * (glyph.id / 16)),
+			(glyph_uv_patch[2] - glyph_uv_patch[0]) / 16.f,
+			(glyph_uv_patch[3] - glyph_uv_patch[1]) / 16.f
+		};
+		challenge_api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
+	};
+	auto render_text = [&](const char* text, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
+		int len = strlen(text);
+
+		render_glyph _glyph;
+		_glyph.x = x;
+		_glyph.y = y;
+		_glyph.w = w;
+		_glyph.h = h;
+		for (int i = 0; i < len; ++i){
+			_glyph.id = text[i];
+			render_single_glyph(_glyph, fg, bg);
+			_glyph.x += w;
+		}
+	};
+	auto render_fps = [&](void){
+		uint8_t _fg[] = {255, 255, 255, 255};
+		uint8_t _bg[] = {0, 0, 0, 255};
+		render_text(fps_buf, 0, 0, 10, 20, _fg, _bg);
+	};
+
 	while (challenge_api.graphics.running()){
 		challenge_api.event.poll_events();
+		
+		float dT = clock.delta_tick();
+
+		accum += dT;
+		++frames;
+
+		if (accum >= 1){
+			snprintf(fps_buf, 80, "Avg Frame: %.4f s, %f ms", (1 / (float)frames), (1000) / (float)frames);
+
+			accum -= 1;
+			frames = 0;
+		}
+
 		challenge_api.graphics.drawable_size(width, height);
 		challenge_api.buffer.clear(width, height);
 
@@ -94,6 +160,10 @@ int main(int argc, const char** argv){
 		glyph.h = height;
 
 		challenge_api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
+
+		// Render FPS text
+		render_fps();
+
 		challenge_api.buffer.render();
 		
 		challenge_api.graphics.end_render();

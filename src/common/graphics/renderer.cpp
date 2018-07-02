@@ -108,4 +108,8 @@ namespace render{
 	void drawable_size(int& width, int& height){
 		SDL_GL_GetDrawableSize(renderer->window, &width, &height);
 	}
+
+	float time_now(void){
+		return (SDL_GetPerformanceCounter() / (double)SDL_GetPerformanceFrequency());
+	}
 }

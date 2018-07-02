@@ -4,13 +4,17 @@
  * SDL_EventType
  * SDL_Scancode
  * SDL_Keycode anonymous enum
- */
+ **/
 
 #ifndef H_EVENT_SDL_ENUM_H
 #define H_EVENT_SDL_ENUM_H
 
 #pragma once
 
+#include <inttypes.h>
+
+typedef int32_t Sint32;
+typedef Sint32 SDL_Keycode;
 /**
  * \brief The types of events that can be delivered.
  */
