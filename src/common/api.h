@@ -99,11 +99,11 @@ struct api_render_buffer_t{
 
 struct api_common_t{
 	api_file_t          file;
-	api_graphics_t      graphics;
-	api_event_t         event;
-	api_shader_t        shader;
-	api_texture_t       texture;
-	api_render_buffer_t buffer;
+    api_graphics_t      graphics;
+    api_event_t         event;
+    api_shader_t        shader;
+    api_texture_t       texture;
+    api_render_buffer_t buffer;
 };
 
 extern "C" api_common_t get_common_api(void);
