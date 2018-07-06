@@ -45,9 +45,26 @@ int main(int argc, const char** argv){
 	challenge.api.graphics.initialize(800, 600, "Test", false);
 	challenge.api.event.initialize_handler();
 
-	// Load shader/texture
-	uint32_t shader = load_shader("./resource/codepage.vs", "./resource/codepage.fs");
-	uint32_t texture = load_texture("./resource/codepage_open.png");
+	uint32_t shader = 0, texture = 0;
+	{
+		// Find a vertex shader, and a fragment shader
+		// Should only ever be one of each. Doesn't matter
+		// what they are named though since we are just searching
+		// for the extension
+		uint8_t buffer[1024];
+		uint32_t buffer_used = 0;
+		uint32_t nvs = challenge.api.file.find("./resource", ".vs", buffer, 1024, buffer_used);
+		uint32_t vs_buf_used = buffer_used;
+		uint32_t nfs = challenge.api.file.find("./resource", ".fs", buffer + vs_buf_used, 1024 - vs_buf_used, buffer_used);
+
+		// Load shader/texture if we have exactly one of each available
+		if (nvs == 1 && nfs == 1){
+			shader = load_shader((const char*)buffer, (const char*)(buffer + vs_buf_used));
+		}
+	}
+	// hardcoded relative path
+	texture = load_texture("./resource/codepage_open.png");
+
 
 	challenge.api.buffer.initialize(1, 1024, shader, texture);
 
@@ -56,8 +73,8 @@ int main(int argc, const char** argv){
 
 	challenge.api.graphics.set_clear_color(128, 128, 0);
 	int width, height;
-	uint8_t fg[4] = {255, 0, 0, 255};
-	uint8_t bg[4] = {0, 255, 0, 255};
+	uint8_t fg[4] = {255, 255, 0, 255};
+	uint8_t bg[4] = {255, 255, 0, 255};
 	uv_quad uv = {0, 0, 1, 1};
 
 	render_glyph glyph;
@@ -152,6 +169,7 @@ int main(int argc, const char** argv){
 
 
 uint32_t load_shader(const char* vpath, const char* fpath){
+	printf("Loading shader from: V[%s], F[%s]\n", vpath, fpath);
 	uint32_t result = 0;
 
 	uint32_t vsz = challenge.api.file.size(vpath);
