@@ -3,11 +3,16 @@
 
 #pragma once
 #include <inttypes.h>
+#include "graphics/image.h"
 
 struct RenderWindow;
 struct render_glyph;
 struct render_clip;
 struct uv_quad;
+
+struct api_memory_t{
+	void (*free)(void* mem);
+};
 
 struct api_file_t{
 	bool     (*exists)(const char* path);
@@ -34,6 +39,15 @@ struct api_graphics_t{
 	void          (*window_size)     (int& width, int& height);
 	void          (*drawable_size)   (int& width, int& height);
 	float         (*time_now)        (void);
+};
+
+struct api_image_t{
+	void         (*initialize)(void);
+	
+	uint32_t     (*load)      (const char* path);
+	uint32_t     (*load_lump) (void* data, uint32_t bytes);
+	void         (*free)      (uint32_t img);
+	image_data_t (*data)      (uint32_t img);
 };
 
 struct api_event_t{
@@ -98,7 +112,9 @@ struct api_render_buffer_t{
 };
 
 struct api_common_t{
+	api_memory_t        memory;
 	api_file_t          file;
+	api_image_t         image;
     api_graphics_t      graphics;
     api_event_t         event;
     api_shader_t        shader;

@@ -34,7 +34,16 @@ uint32_t     image_load_lump(void* data, uint32_t data_bytes){
     // Assumes success
     uint32_t ndx = get_open_ndx();
 
-    SDL_Surface *image = SDL_ConvertSurfaceFormat(temp, SDL_GetWindowPixelFormat((SDL_Window*)render::get_window()), 0);
+    {
+    	auto format = SDL_GetWindowPixelFormat((SDL_Window*)render::get_window());
+    	printf("Window Format: <%u> %s\n", format, SDL_GetPixelFormatName(format));
+    	SDL_PixelFormat* pixelFormat = temp->format;
+		auto pixelFormatEnum = pixelFormat->format;
+		printf("Surface Format: <%u> %s\n", pixelFormatEnum, SDL_GetPixelFormatName(pixelFormatEnum));
+    }
+
+    //SDL_Surface *image = SDL_ConvertSurfaceFormat(temp, SDL_GetWindowPixelFormat((SDL_Window*)render::get_window()), 0);
+    SDL_Surface *image = SDL_ConvertSurfaceFormat(temp, SDL_PIXELFORMAT_ABGR8888, 0);
     SDL_FreeSurface(temp);
 
     open[ndx] = image;

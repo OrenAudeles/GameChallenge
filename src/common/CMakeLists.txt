@@ -52,6 +52,7 @@ add_library(${LIB_NAME} SHARED
 	./event/event_handler.cpp
 	./event/event_SDL.cpp
 	
+  ./memory/free_SDL.cpp
 )
 
 set_target_properties(${LIB_NAME} PROPERTIES

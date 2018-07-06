@@ -2,6 +2,9 @@
 
 #include "io/file.h"
 #include "event/event.h"
+#include "memory/free.h"
+
+#include "graphics/image.h"
 #include "graphics/renderer.h"
 #include "graphics/shader.h"
 #include "graphics/texture.h"
@@ -44,6 +47,18 @@ struct api_graphics_t get_graphics_api(void){
 	API(time_now);
 #undef API
 
+	return result;
+}
+
+struct api_image_t get_image_api(void){
+	api_image_t result = {0};
+#define API(fn) result.fn = image_##fn
+	API(initialize);
+	API(load);
+	API(load_lump);
+	API(free);
+	API(data);
+#undef API
 	return result;
 }
 
@@ -115,10 +130,20 @@ struct api_render_buffer_t get_buffer_api(void){
 	return result;
 }
 
+struct api_memory_t get_memory_api(void){
+	api_memory_t result = {0};
+#define API(fn) result.fn = memory_##fn
+	API(free);
+#undef API
+	return result;
+}
+
 api_common_t get_common_api(void){
 	api_common_t result = {0};
 
+	result.memory = get_memory_api();
 	result.file = get_file_api();
+	result.image = get_image_api();
 	result.graphics = get_graphics_api();
 	result.event = get_event_api();
 	result.shader = get_shader_api();
