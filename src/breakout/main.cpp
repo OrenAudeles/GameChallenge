@@ -9,6 +9,7 @@
 #include "common/api.h"
 #include "common/graphics/render_buffer.h"
 
+#include <unordered_map>
 struct{
     void* module;
     api_common_t api;
@@ -39,15 +40,31 @@ EVENT_FN(key_down){
 uint32_t load_shader(const char*, const char*);
 uint32_t load_texture(const char*);
 
+std::unordered_map<std::string, uv_quad> atlas;
+
+void init_atlas(void){
+	atlas.clear();
+
+	atlas["full"]  = {0, 0, 1, 1};
+	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
+	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
+	atlas["brick"] = {160.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+	atlas["solid"] = {320.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+	atlas["ball"]  = {(512 - 64) / 512.f, 0, 64.f / 512.f, 64.f / 288.f};
+	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
+}
+
 int main(int argc, const char** argv){
 	load_dynamic_libraries();
 
 	challenge.api.graphics.initialize(800, 600, "Test", false);
 	challenge.api.event.initialize_handler();
 
+	init_atlas();
+
 	// Load shader/texture
 	uint32_t shader = load_shader("./resource/shader.vs", "./resource/shader.fs");
-	uint32_t texture = load_texture("./resource/codepage.png");
+	uint32_t texture = load_texture("./resource/breakout.png");
 
 	challenge.api.buffer.initialize(1, 1024, shader, texture);
 
@@ -57,8 +74,8 @@ int main(int argc, const char** argv){
 	challenge.api.graphics.set_clear_color(128, 128, 0);
 	int width, height;
 	uint8_t fg[4] = {255, 0, 0, 255};
-	uint8_t bg[4] = {0, 255, 0, 255};
-	uv_quad uv = {0, 0, 1, 1};
+	uint8_t bg[4] = {255, 0, 0, 255};
+	//uv_quad uv = {0, 0, 1, 1};
 
 	render_glyph glyph;
 	glyph.x = glyph.y = 0;
@@ -75,7 +92,7 @@ int main(int argc, const char** argv){
 
 	char fps_buf[80] = "Unknown Frame Time, not enough samples";
 
-	float glyph_uv_patch[] = {0, 0, 1, 160.f/260.f};
+	float glyph_uv_patch[] = {0, 0, 160.f / 512.f, 160.f/288.f};
 
 	auto render_single_glyph = [&](render_glyph glyph, uint8_t* fg, uint8_t* bg){
 		uv_quad uv = {
@@ -106,6 +123,29 @@ int main(int argc, const char** argv){
 		render_text(fps_buf, 0, 0, 10, 20, _fg, _bg);
 	};
 
+	auto find_or_fail = [&](const std::string& name){
+		uv_quad result = {0};
+
+		auto search = atlas.find(name);
+		if (search != atlas.end()){
+			result = search->second;
+		}
+
+		return result;
+	};
+
+	auto render_patch = [&](const std::string& name, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
+		render_glyph _glyph;
+		_glyph.x = x;
+		_glyph.y = y;
+		_glyph.w = w;
+		_glyph.h = h;
+
+		uv_quad quad = find_or_fail(name);
+
+		challenge.api.buffer.push_RGBA_glyphs_ex(&_glyph, 1, &quad, fg, bg);
+	};
+
 	while (challenge.api.graphics.running()){
 		challenge.api.event.poll_events();
 		
@@ -129,7 +169,8 @@ int main(int argc, const char** argv){
 		glyph.w = width;
 		glyph.h = height;
 
-		challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
+		render_patch("ball", 0, 0, width, height, fg, bg);
+		//challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
 
 		// Render FPS text
 		render_fps();
