@@ -43,8 +43,6 @@ uint32_t load_texture(const char*);
 std::unordered_map<std::string, uv_quad> atlas;
 
 void init_atlas(void){
-	atlas.clear();
-
 	atlas["full"]  = {0, 0, 1, 1};
 	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
 	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
@@ -54,17 +52,77 @@ void init_atlas(void){
 	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
 }
 
+void dump_atlas(const char* filename){
+	// 16 bytes per ID, 16 bytes per UV
+	struct atlas_data{
+		uv_quad uv;
+		char id[16];
+	};
+
+	int count = atlas.size();
+	atlas_data *dump = new atlas_data[count];
+
+	int ndx = 0;
+	for (auto pair : atlas){
+		dump[ndx].uv = pair.second;
+		snprintf(dump[ndx].id, 16, "%s", pair.first.c_str());
+		// printf("Dumping ID: %s <%f, %f, %f, %f>\n", pair.first.c_str(),
+		// 	pair.second.u, pair.second.v, pair.second.du, pair.second.dv);
+		++ndx;
+	}
+
+	char filename_buf[80] = {0};
+	snprintf(filename_buf, 80, "./resource/%s", filename);
+
+	challenge.api.file.write(filename_buf, &count, sizeof(int));
+	challenge.api.file.append(filename_buf, dump, count * sizeof(atlas_data));
+	delete[] dump;
+}
+void load_atlas_from_file(const char* filename){
+	atlas.clear();
+	// 16 bytes per ID, 16 bytes per UV
+	struct atlas_data{
+		uv_quad uv;
+		char id[16];
+	};
+
+	char filename_buf[80] = {0};
+	snprintf(filename_buf, 80, "./resource/%s", filename);
+
+	auto sz = challenge.api.file.size(filename_buf);
+	uint8_t dbuf[4096];
+
+	// File is either empty, or does not exist. Gotta populate it
+	// Once atlas is generated this won't get called again, and
+	// can be removed later.
+	if (sz == 0){
+		init_atlas();
+		dump_atlas(filename);
+	}
+	else{
+		challenge.api.file.read(filename_buf, dbuf, 4096);
+		int* count_p = (int*)dbuf;
+
+		atlas_data* data_p = (atlas_data*)(count_p + 1);
+
+		for (int i = 0; i < *count_p; ++i){
+			// printf("Loading: %s <%f, %f, %f, %f>\n",
+			// 	data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
+			atlas[data_p[i].id] = data_p[i].uv;
+		}
+	}
+}
+
 int main(int argc, const char** argv){
 	load_dynamic_libraries();
 
 	challenge.api.graphics.initialize(800, 600, "Test", false);
 	challenge.api.event.initialize_handler();
 
-	init_atlas();
-
 	// Load shader/texture
 	uint32_t shader = load_shader("./resource/shader.vs", "./resource/shader.fs");
 	uint32_t texture = load_texture("./resource/breakout.png");
+	load_atlas_from_file("breakout.atlas");
 
 	challenge.api.buffer.initialize(1, 1024, shader, texture);
 
@@ -92,16 +150,32 @@ int main(int argc, const char** argv){
 
 	char fps_buf[80] = "Unknown Frame Time, not enough samples";
 
-	float glyph_uv_patch[] = {0, 0, 160.f / 512.f, 160.f/288.f};
+	//float glyph_uv_patch[] = {0, 0, 160.f / 512.f, 160.f/288.f};
 
-	auto render_single_glyph = [&](render_glyph glyph, uint8_t* fg, uint8_t* bg){
+	auto find_or_fail = [&](const std::string& name){
+		uv_quad result = {0};
+
+		auto search = atlas.find(name);
+		if (search != atlas.end()){
+			result = search->second;
+		}
+
+		return result;
+	};
+
+	auto render_single_glyph = [&](render_glyph rglyph, uint8_t* fg, uint8_t* bg){
+		static uv_quad text = find_or_fail("text");
+		static uv_quad glyph = find_or_fail("glyph");
+
+		float ou = (rglyph.id % 16) * glyph.du;
+		float ov = (rglyph.id / 16) * glyph.dv;
+		
 		uv_quad uv = {
-			glyph_uv_patch[0] + ((glyph_uv_patch[2] - glyph_uv_patch[0]) / 16.f * (glyph.id % 16)),
-			glyph_uv_patch[1] + ((glyph_uv_patch[3] - glyph_uv_patch[1]) / 16.f * (glyph.id / 16)),
-			(glyph_uv_patch[2] - glyph_uv_patch[0]) / 16.f,
-			(glyph_uv_patch[3] - glyph_uv_patch[1]) / 16.f
+			text.u + ou,
+			text.v + ov,
+			glyph.du, glyph.dv
 		};
-		challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
+		challenge.api.buffer.push_RGBA_glyphs_ex(&rglyph, 1, &uv, fg, bg);
 	};
 	auto render_text = [&](const char* text, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
 		int len = strlen(text);
@@ -121,17 +195,6 @@ int main(int argc, const char** argv){
 		uint8_t _fg[] = {255, 255, 255, 255};
 		uint8_t _bg[] = {0, 0, 0, 255};
 		render_text(fps_buf, 0, 0, 10, 20, _fg, _bg);
-	};
-
-	auto find_or_fail = [&](const std::string& name){
-		uv_quad result = {0};
-
-		auto search = atlas.find(name);
-		if (search != atlas.end()){
-			result = search->second;
-		}
-
-		return result;
 	};
 
 	auto render_patch = [&](const std::string& name, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
@@ -169,9 +232,8 @@ int main(int argc, const char** argv){
 		glyph.w = width;
 		glyph.h = height;
 
-		render_patch("ball", 0, 0, width, height, fg, bg);
-		//challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &uv, fg, bg);
-
+		render_patch("glyph", 0, 0, width, height, fg, bg);
+		
 		// Render FPS text
 		render_fps();
 
