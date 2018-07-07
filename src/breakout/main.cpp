@@ -47,7 +47,7 @@ int main(int argc, const char** argv){
 
 	// Load shader/texture
 	uint32_t shader = load_shader("./resource/shader.vs", "./resource/shader.fs");
-	uint32_t texture = load_texture("./resource/codepage_open.png");
+	uint32_t texture = load_texture("./resource/codepage.png");
 
 	challenge.api.buffer.initialize(1, 1024, shader, texture);
 
