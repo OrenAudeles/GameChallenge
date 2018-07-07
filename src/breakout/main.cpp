@@ -42,42 +42,40 @@ uint32_t load_texture(const char*);
 
 std::unordered_map<std::string, uv_quad> atlas;
 
-void init_atlas(void){
-	atlas["full"]  = {0, 0, 1, 1};
-	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
-	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
-	atlas["brick"] = {160.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
-	atlas["solid"] = {320.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
-	atlas["ball"]  = {(512 - 64) / 512.f, 0, 64.f / 512.f, 64.f / 288.f};
-	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
-}
+// void init_atlas(void){
+// 	atlas["full"]  = {0, 0, 1, 1};
+// 	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
+// 	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
+// 	atlas["brick"] = {160.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+// 	atlas["solid"] = {320.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+// 	atlas["ball"]  = {(512 - 64) / 512.f, 0, 64.f / 512.f, 64.f / 288.f};
+// 	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
+// }
 
-void dump_atlas(const char* filename){
-	// 16 bytes per ID, 16 bytes per UV
-	struct atlas_data{
-		uv_quad uv;
-		char id[16];
-	};
+// void dump_atlas(const char* filename){
+// 	// 16 bytes per ID, 16 bytes per UV
+// 	struct atlas_data{
+// 		uv_quad uv;
+// 		char id[16];
+// 	};
 
-	int count = atlas.size();
-	atlas_data *dump = new atlas_data[count];
+// 	int count = atlas.size();
+// 	atlas_data *dump = new atlas_data[count];
 
-	int ndx = 0;
-	for (auto pair : atlas){
-		dump[ndx].uv = pair.second;
-		snprintf(dump[ndx].id, 16, "%s", pair.first.c_str());
-		// printf("Dumping ID: %s <%f, %f, %f, %f>\n", pair.first.c_str(),
-		// 	pair.second.u, pair.second.v, pair.second.du, pair.second.dv);
-		++ndx;
-	}
+// 	int ndx = 0;
+// 	for (auto pair : atlas){
+// 		dump[ndx].uv = pair.second;
+// 		snprintf(dump[ndx].id, 16, "%s", pair.first.c_str());
+// 		++ndx;
+// 	}
 
-	char filename_buf[80] = {0};
-	snprintf(filename_buf, 80, "./resource/%s", filename);
+// 	char filename_buf[80] = {0};
+// 	snprintf(filename_buf, 80, "./resource/%s", filename);
 
-	challenge.api.file.write(filename_buf, &count, sizeof(int));
-	challenge.api.file.append(filename_buf, dump, count * sizeof(atlas_data));
-	delete[] dump;
-}
+// 	challenge.api.file.write(filename_buf, &count, sizeof(int));
+// 	challenge.api.file.append(filename_buf, dump, count * sizeof(atlas_data));
+// 	delete[] dump;
+// }
 void load_atlas_from_file(const char* filename){
 	atlas.clear();
 	// 16 bytes per ID, 16 bytes per UV
@@ -89,28 +87,28 @@ void load_atlas_from_file(const char* filename){
 	char filename_buf[80] = {0};
 	snprintf(filename_buf, 80, "./resource/%s", filename);
 
-	auto sz = challenge.api.file.size(filename_buf);
+	/*auto sz = */challenge.api.file.size(filename_buf);
 	uint8_t dbuf[4096];
 
 	// File is either empty, or does not exist. Gotta populate it
 	// Once atlas is generated this won't get called again, and
 	// can be removed later.
-	if (sz == 0){
-		init_atlas();
-		dump_atlas(filename);
-	}
-	else{
-		challenge.api.file.read(filename_buf, dbuf, 4096);
-		int* count_p = (int*)dbuf;
+	// if (sz == 0){
+	// 	init_atlas();
+	// 	dump_atlas(filename);
+	// }
+	// else{
+	challenge.api.file.read(filename_buf, dbuf, 4096);
+	int* count_p = (int*)dbuf;
 
-		atlas_data* data_p = (atlas_data*)(count_p + 1);
+	atlas_data* data_p = (atlas_data*)(count_p + 1);
 
-		for (int i = 0; i < *count_p; ++i){
-			// printf("Loading: %s <%f, %f, %f, %f>\n",
-			// 	data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
-			atlas[data_p[i].id] = data_p[i].uv;
+	for (int i = 0; i < *count_p; ++i){
+		printf("[Atlas Loading] %*.*s <%f, %f, %f, %f>\n", 16, 16,
+			data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
+		atlas[data_p[i].id] = data_p[i].uv;
 		}
-	}
+	// }
 }
 
 int main(int argc, const char** argv){
@@ -133,8 +131,7 @@ int main(int argc, const char** argv){
 	int width, height;
 	uint8_t fg[4] = {255, 0, 0, 255};
 	uint8_t bg[4] = {255, 0, 0, 255};
-	//uv_quad uv = {0, 0, 1, 1};
-
+	
 	render_glyph glyph;
 	glyph.x = glyph.y = 0;
 
@@ -149,8 +146,6 @@ int main(int argc, const char** argv){
 	int frames = 0;
 
 	char fps_buf[80] = "Unknown Frame Time, not enough samples";
-
-	//float glyph_uv_patch[] = {0, 0, 160.f / 512.f, 160.f/288.f};
 
 	auto find_or_fail = [&](const std::string& name){
 		uv_quad result = {0};
@@ -232,7 +227,7 @@ int main(int argc, const char** argv){
 		glyph.w = width;
 		glyph.h = height;
 
-		render_patch("glyph", 0, 0, width, height, fg, bg);
+		render_patch("full", 0, 0, width, height, fg, bg);
 		
 		// Render FPS text
 		render_fps();
