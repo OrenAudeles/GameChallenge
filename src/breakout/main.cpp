@@ -202,6 +202,7 @@ void move_ball(float width, float height, float dT){
 		float left = nx - ball.r;
 		float right= nx + ball.r;
 		float up   = ny - ball.r;
+		float down = ny + ball.r;
 
 		// Collide against walls
 		if (left <= 0 || right >= width){
@@ -215,6 +216,30 @@ void move_ball(float width, float height, float dT){
 			reset_ball_and_paddle(width, height);
 			nx = ball.x;
 			ny = ball.y;
+		}
+		// Collide against paddle (if traveling DOWN)
+		if (dy > 0){
+			bool in_x = 
+				((left  <= (paddle.x + paddle.hw)) &
+				 (right >= (paddle.x - paddle.hw)));
+			bool in_y =
+				((up    <= (paddle.y + paddle.hh)) &
+				 (down  >= (paddle.y - paddle.hh)));
+
+			if (in_x & in_y){
+				//ball.vy *= -1;
+				float rx = ball.x - paddle.x;
+				float ry = ball.y - paddle.y;
+
+				// Vector magnitude
+				float mag = sqrtf(rx * rx + ry * ry);
+				// Normalized
+				float nx = rx / mag;
+				float ny = ry / mag;
+
+				ball.vx = nx;
+				ball.vy = ny;
+			}
 		}
 
 		ball.x = nx;
