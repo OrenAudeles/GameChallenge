@@ -10,6 +10,8 @@
 #include "common/graphics/render_buffer.h"
 
 #include <unordered_map>
+#include <cmath>
+
 struct{
     void* module;
     api_common_t api;
@@ -144,38 +146,129 @@ struct Box2D{
 	float x, y, hw, hh;
 };
 
-Box2D paddle;
-const float paddle_speed = 1.f;
+struct Ball{
+	float x, y, r;
+	float vx, vy;
+	bool stuck;
+};
 
-void move_paddle(float dT){
+Box2D paddle;
+Ball  ball;
+float paddle_speed = 1.f;
+float ball_speed = 0.5f;
+
+void reset_ball_and_paddle(float width, float height){
+	paddle.x = width * 0.5f;
+	paddle.y = height * 0.975f;
+	paddle.hw = width * 0.1f;
+	paddle.hh = height * 0.025f;
+
+	ball.x = paddle.x + (paddle.hw * 0.5f);
+	ball.r = 16;
+	ball.y = paddle.y - (paddle.hh + ball.r);
+	ball.stuck = true;
+
+	paddle_speed = width;
+	ball_speed = width * 0.5f;
+}
+
+void move_paddle(float width, float height, float dT){
 	float dspeed = paddle_speed * dT * ((int)paddle_state.dir_right - (int)paddle_state.dir_left);
 
-	paddle.x += dspeed;
-
-	if (paddle.x + paddle.hw > 1){
-		paddle.x = 1 - paddle.hw;
+	float nx = paddle.x + dspeed;
+	
+	if (nx + paddle.hw > width){
+		nx = width - paddle.hw;
 	}
-	if (paddle.x - paddle.hw < 0){
-		paddle.x = paddle.hw;
+	if (nx - paddle.hw < 0){
+		nx = paddle.hw;
+	}
+
+	if (ball.stuck){
+		ball.x += nx - paddle.x;
+	}
+	paddle.x = nx;
+}
+void move_ball(float width, float height, float dT){
+	if (!ball.stuck){
+		float dspeed = ball_speed * dT;
+
+		float dx = dspeed * ball.vx;
+		float dy = dspeed * ball.vy;
+
+		float nx = ball.x + dx;
+		float ny = ball.y + dy;
+
+		float left = nx - ball.r;
+		float right= nx + ball.r;
+		float up   = ny - ball.r;
+
+		// Collide against walls
+		if (left <= 0 || right >= width){
+			ball.vx *= -1;
+		}
+		if (up <= 0){
+			ball.vy *= -1;
+		}
+		if (up >= height){
+			// reset ball
+			reset_ball_and_paddle(width, height);
+			nx = ball.x;
+			ny = ball.y;
+		}
+
+		ball.x = nx;
+		ball.y = ny;
+	}
+	else if (paddle_state.rball){
+		ball.stuck = false;
+
+		// Calculate direction to fire ball off towards
+		// - rel position of Ball to Paddle
+		float rx = ball.x - paddle.x;
+		float ry = ball.y - paddle.y;
+
+		// Vector magnitude
+		float mag = sqrtf(rx * rx + ry * ry);
+		// Normalized
+		float nx = rx / mag;
+		float ny = ry / mag;
+
+		ball.vx = nx;
+		ball.vy = ny;
 	}
 }
-void render_paddle(float w, float h){
+void render_paddle(void){
 	uint8_t paddle_col[] = {0, 0, 0, 0};
 
-	auto quad = find_or_fail("paddle");
+	static auto quad = find_or_fail("paddle");
 	render_glyph glyph;
-	glyph.x = w * (paddle.x - paddle.hw);
-	glyph.y = h * (paddle.y - paddle.hh);
-	glyph.w = w * (2 * paddle.hw);
-	glyph.h = h * (2 * paddle.hh);
+	glyph.x = (paddle.x - paddle.hw);
+	glyph.y = (paddle.y - paddle.hh);
+	glyph.w = (2 * paddle.hw);
+	glyph.h = (2 * paddle.hh);
 
 	challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &quad, paddle_col, paddle_col);
+}
+void render_ball(void){
+	uint8_t ball_fg[] = {255, 0, 0, 255};
+	uint8_t ball_bg[] = {0, 0, 0, 255};
+
+	static auto quad = find_or_fail("ball");
+	render_glyph glyph;
+	glyph.x = (ball.x - ball.r);
+	glyph.y = (ball.y - ball.r);
+	glyph.w = (2 * ball.r);
+	glyph.h = (2 * ball.r);
+
+	challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &quad, ball_fg, ball_bg);
 }
 
 int main(int argc, const char** argv){
 	load_dynamic_libraries();
 
-	challenge.api.graphics.initialize(800, 600, "Test", false);
+	int width = 800, height = 600;
+	challenge.api.graphics.initialize(width, height, "Test", false);
 	challenge.api.event.initialize_handler();
 
 	// Load shader/texture
@@ -190,7 +283,6 @@ int main(int argc, const char** argv){
 	challenge.api.event.set_event_handler(SDL_KEYUP, EVENT_NAME(key_up));
 
 	challenge.api.graphics.set_clear_color(128, 128, 0);
-	int width, height;
 	uint8_t fg[4] = {255, 0, 0, 255};
 	uint8_t bg[4] = {255, 0, 0, 255};
 	
@@ -252,13 +344,11 @@ int main(int argc, const char** argv){
 		challenge.api.buffer.push_RGBA_glyphs_ex(&_glyph, 1, &quad, fg, bg);
 	};
 
-	paddle.x = 0.5f;
-	paddle.y = 0.975f;
-	paddle.hw = 0.1f;
-	paddle.hh = 0.025f;
+	reset_ball_and_paddle(width, height);
 
 	while (challenge.api.graphics.running()){
 		challenge.api.event.poll_events();
+		challenge.api.graphics.drawable_size(width, height);
 		
 		float dT = clock.delta_tick();
 
@@ -272,15 +362,16 @@ int main(int argc, const char** argv){
 			frames = 0;
 		}
 
-		move_paddle(dT);
 
-		challenge.api.graphics.drawable_size(width, height);
+		move_paddle(width, height, dT);
+		move_ball(width, height, dT);
+
 		challenge.api.buffer.clear(width, height);
 
 		challenge.api.graphics.begin_render();
 
 		//render_patch("full", 0, 0, width, height, fg, bg);
-		render_patch("ball", 32, 32, 16, 16, fg, bg);
+		//render_patch("ball", 32, 32, 16, 16, fg, bg);
 
 		int x = 0;
 		for (int i = 0; i < 5; ++i){
@@ -291,7 +382,8 @@ int main(int argc, const char** argv){
 		}
 		//render_patch("brick", 0, 64, width / 5, height / 10, fg, bg);
 		//render_patch("paddle", width / 2 - width / 10, height - height / 20, width / 5, height / 20, fg, fg);
-		render_paddle(width, height);
+		render_paddle();
+		render_ball();
 		
 		// Render FPS text
 		render_fps();
