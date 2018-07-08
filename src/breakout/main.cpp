@@ -26,6 +26,12 @@ void unload_dynamic_libraries(void){
     challenge.api = {0};
 }
 
+struct PaddleState{
+	uint8_t dir_left : 1;
+	uint8_t dir_right: 1;
+	uint8_t rball    : 1;
+} paddle_state = {0};
+
 EVENT_FN(quit){
     challenge.api.graphics.close_window();
 }
@@ -34,6 +40,18 @@ EVENT_FN(key_down){
 
 	switch(ev->key.keysym.sym){
 		case SDLK_ESCAPE: { EVENT_NAME(quit)(ev); break; }
+		case SDLK_SPACE:  { paddle_state.rball = 1; break; }
+		case SDLK_LEFT:   { paddle_state.dir_left = 1; break; }
+		case SDLK_RIGHT:  { paddle_state.dir_right = 1; break; }
+	}
+}
+EVENT_FN(key_up){
+	SDL_Event* ev = (SDL_Event*)data;
+
+	switch(ev->key.keysym.sym){
+		case SDLK_SPACE:{ paddle_state.rball = 0; break; }
+		case SDLK_LEFT: { paddle_state.dir_left = 0; break; }
+		case SDLK_RIGHT:{ paddle_state.dir_right = 0; break; }
 	}
 }
 
@@ -107,8 +125,51 @@ void load_atlas_from_file(const char* filename){
 		printf("[Atlas Loading] %*.*s <%f, %f, %f, %f>\n", 16, 16,
 			data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
 		atlas[data_p[i].id] = data_p[i].uv;
-		}
+	}
 	// }
+}
+
+uv_quad find_or_fail(const std::string& name){
+	uv_quad result = {0};
+
+	auto search = atlas.find(name);
+	if (search != atlas.end()){
+		result = search->second;
+	}
+
+	return result;
+}
+
+struct Box2D{
+	float x, y, hw, hh;
+};
+
+Box2D paddle;
+const float paddle_speed = 1.f;
+
+void move_paddle(float dT){
+	float dspeed = paddle_speed * dT * ((int)paddle_state.dir_right - (int)paddle_state.dir_left);
+
+	paddle.x += dspeed;
+
+	if (paddle.x + paddle.hw > 1){
+		paddle.x = 1 - paddle.hw;
+	}
+	if (paddle.x - paddle.hw < 0){
+		paddle.x = paddle.hw;
+	}
+}
+void render_paddle(float w, float h){
+	uint8_t paddle_col[] = {0, 0, 0, 0};
+
+	auto quad = find_or_fail("paddle");
+	render_glyph glyph;
+	glyph.x = w * (paddle.x - paddle.hw);
+	glyph.y = h * (paddle.y - paddle.hh);
+	glyph.w = w * (2 * paddle.hw);
+	glyph.h = h * (2 * paddle.hh);
+
+	challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &quad, paddle_col, paddle_col);
 }
 
 int main(int argc, const char** argv){
@@ -126,15 +187,13 @@ int main(int argc, const char** argv){
 
 	challenge.api.event.set_event_handler(SDL_QUIT, EVENT_NAME(quit));
 	challenge.api.event.set_event_handler(SDL_KEYDOWN, EVENT_NAME(key_down));
+	challenge.api.event.set_event_handler(SDL_KEYUP, EVENT_NAME(key_up));
 
 	challenge.api.graphics.set_clear_color(128, 128, 0);
 	int width, height;
 	uint8_t fg[4] = {255, 0, 0, 255};
 	uint8_t bg[4] = {255, 0, 0, 255};
 	
-	render_glyph glyph;
-	glyph.x = glyph.y = 0;
-
 	struct Clock_t{
 		float last, now;
 		inline Clock_t(): last(0), now(challenge.api.graphics.time_now()){}
@@ -146,17 +205,6 @@ int main(int argc, const char** argv){
 	int frames = 0;
 
 	char fps_buf[80] = "Unknown Frame Time, not enough samples";
-
-	auto find_or_fail = [&](const std::string& name){
-		uv_quad result = {0};
-
-		auto search = atlas.find(name);
-		if (search != atlas.end()){
-			result = search->second;
-		}
-
-		return result;
-	};
 
 	auto render_single_glyph = [&](render_glyph rglyph, uint8_t* fg, uint8_t* bg){
 		static uv_quad text = find_or_fail("text");
@@ -204,6 +252,11 @@ int main(int argc, const char** argv){
 		challenge.api.buffer.push_RGBA_glyphs_ex(&_glyph, 1, &quad, fg, bg);
 	};
 
+	paddle.x = 0.5f;
+	paddle.y = 0.975f;
+	paddle.hw = 0.1f;
+	paddle.hh = 0.025f;
+
 	while (challenge.api.graphics.running()){
 		challenge.api.event.poll_events();
 		
@@ -219,15 +272,26 @@ int main(int argc, const char** argv){
 			frames = 0;
 		}
 
+		move_paddle(dT);
+
 		challenge.api.graphics.drawable_size(width, height);
 		challenge.api.buffer.clear(width, height);
 
 		challenge.api.graphics.begin_render();
 
-		glyph.w = width;
-		glyph.h = height;
+		//render_patch("full", 0, 0, width, height, fg, bg);
+		render_patch("ball", 32, 32, 16, 16, fg, bg);
 
-		render_patch("full", 0, 0, width, height, fg, bg);
+		int x = 0;
+		for (int i = 0; i < 5; ++i){
+			int step = width / 5;
+
+			render_patch("brick", x, 64, step, height/10, fg, bg);
+			x += step;
+		}
+		//render_patch("brick", 0, 64, width / 5, height / 10, fg, bg);
+		//render_patch("paddle", width / 2 - width / 10, height - height / 20, width / 5, height / 20, fg, fg);
+		render_paddle(width, height);
 		
 		// Render FPS text
 		render_fps();
