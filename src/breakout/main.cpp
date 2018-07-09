@@ -10,7 +10,9 @@
 #include "common/graphics/render_buffer.h"
 
 #include <unordered_map>
+#include <vector>
 #include <cmath>
+#include <algorithm>
 
 struct{
     void* module;
@@ -62,40 +64,40 @@ uint32_t load_texture(const char*);
 
 std::unordered_map<std::string, uv_quad> atlas;
 
-// void init_atlas(void){
-// 	atlas["full"]  = {0, 0, 1, 1};
-// 	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
-// 	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
-// 	atlas["brick"] = {160.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
-// 	atlas["solid"] = {320.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
-// 	atlas["ball"]  = {(512 - 64) / 512.f, 0, 64.f / 512.f, 64.f / 288.f};
-// 	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
-// }
+void init_atlas(void){
+	atlas["full"]  = {0, 0, 1, 1};
+	atlas["glyph"] = {0, 0, 10.f / 512.f, 10.f / 288.f};
+	atlas["text"]  = {0, 0, 160.f / 512.f, 160.f / 288.f};
+	atlas["brick"] = {160.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+	atlas["solid"] = {288.f / 512.f, 0, 128.f / 512.f, 128.f / 288.f};
+	atlas["ball"]  = {(512 - 64) / 512.f, 0, 64.f / 512.f, 64.f / 288.f};
+	atlas["paddle"]= {0, 160.f / 288.f, 1, 128.f / 288.f};
+}
 
-// void dump_atlas(const char* filename){
-// 	// 16 bytes per ID, 16 bytes per UV
-// 	struct atlas_data{
-// 		uv_quad uv;
-// 		char id[16];
-// 	};
+void dump_atlas(const char* filename){
+	// 16 bytes per ID, 16 bytes per UV
+	struct atlas_data{
+		uv_quad uv;
+		char id[16];
+	};
 
-// 	int count = atlas.size();
-// 	atlas_data *dump = new atlas_data[count];
+	int count = atlas.size();
+	atlas_data *dump = new atlas_data[count];
 
-// 	int ndx = 0;
-// 	for (auto pair : atlas){
-// 		dump[ndx].uv = pair.second;
-// 		snprintf(dump[ndx].id, 16, "%s", pair.first.c_str());
-// 		++ndx;
-// 	}
+	int ndx = 0;
+	for (auto pair : atlas){
+		dump[ndx].uv = pair.second;
+		snprintf(dump[ndx].id, 16, "%s", pair.first.c_str());
+		++ndx;
+	}
 
-// 	char filename_buf[80] = {0};
-// 	snprintf(filename_buf, 80, "./resource/%s", filename);
+	char filename_buf[80] = {0};
+	snprintf(filename_buf, 80, "./resource/%s", filename);
 
-// 	challenge.api.file.write(filename_buf, &count, sizeof(int));
-// 	challenge.api.file.append(filename_buf, dump, count * sizeof(atlas_data));
-// 	delete[] dump;
-// }
+	challenge.api.file.write(filename_buf, &count, sizeof(int));
+	challenge.api.file.append(filename_buf, dump, count * sizeof(atlas_data));
+	delete[] dump;
+}
 void load_atlas_from_file(const char* filename){
 	atlas.clear();
 	// 16 bytes per ID, 16 bytes per UV
@@ -107,7 +109,8 @@ void load_atlas_from_file(const char* filename){
 	char filename_buf[80] = {0};
 	snprintf(filename_buf, 80, "./resource/%s", filename);
 
-	/*auto sz = */challenge.api.file.size(filename_buf);
+	//auto sz = 
+		challenge.api.file.size(filename_buf);
 	uint8_t dbuf[4096];
 
 	// File is either empty, or does not exist. Gotta populate it
@@ -118,16 +121,16 @@ void load_atlas_from_file(const char* filename){
 	// 	dump_atlas(filename);
 	// }
 	// else{
-	challenge.api.file.read(filename_buf, dbuf, 4096);
-	int* count_p = (int*)dbuf;
+		challenge.api.file.read(filename_buf, dbuf, 4096);
+		int* count_p = (int*)dbuf;
 
-	atlas_data* data_p = (atlas_data*)(count_p + 1);
+		atlas_data* data_p = (atlas_data*)(count_p + 1);
 
-	for (int i = 0; i < *count_p; ++i){
-		printf("[Atlas Loading] %*.*s <%f, %f, %f, %f>\n", 16, 16,
-			data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
-		atlas[data_p[i].id] = data_p[i].uv;
-	}
+		for (int i = 0; i < *count_p; ++i){
+			printf("[Atlas Loading] %*.*s <%f, %f, %f, %f>\n", 16, 16,
+				data_p[i].id, data_p[i].uv.u, data_p[i].uv.v, data_p[i].uv.du, data_p[i].uv.dv);
+			atlas[data_p[i].id] = data_p[i].uv;
+		}
 	// }
 }
 
@@ -142,9 +145,66 @@ uv_quad find_or_fail(const std::string& name){
 	return result;
 }
 
+const uint8_t level[] = {
+	5, 5,
+	1, 1, 2, 1, 1,
+	3, 1, 3, 1, 3,
+	2, 2, 2, 2, 2,
+	2, 1, 2, 1, 2,
+	3, 3, 3, 3, 3,
+};
+
 struct Box2D{
 	float x, y, hw, hh;
 };
+
+struct Brick{
+	uint8_t type;
+	Box2D box;
+};
+std::vector<Brick> bricks;
+int num_non_solid = 0;
+int lives = 0;
+
+void init_level(float width, float brick_region_height){
+	bricks.clear();
+	lives = 3;
+	num_non_solid = 0;
+
+	uint8_t bw = level[0];
+	uint8_t bh = level[1];
+
+	float brick_width = width / (float)bw;
+	float brick_height = brick_region_height / (float)bh;
+
+	float hw = brick_width * 0.5f;
+	float hh = brick_height * 0.5f;
+
+	Box2D box;
+	box.x = hw;
+	box.y = hh;
+	box.hw = hw;
+	box.hh = hh;
+
+	const uint8_t *index = &level[2];
+	for (uint8_t y = 0; y < bh; ++y){
+		for (uint8_t x = 0; x < bw; ++x){
+			uint8_t t = index[x + y * bw];
+			if (t > 0){
+				Brick b;
+				b.type = t - 1;
+				b.box = box;
+
+				bricks.push_back(b);
+
+				num_non_solid += (b.type > 0);
+			}
+			box.x += brick_width;
+		}
+		box.y += brick_height;
+		box.x = hw;
+	}
+}
 
 struct Ball{
 	float x, y, r;
@@ -156,6 +216,165 @@ Box2D paddle;
 Ball  ball;
 float paddle_speed = 1.f;
 float ball_speed = 0.5f;
+
+struct Collision{
+	bool result;
+	uint8_t primary_direction;
+	float penetration[2];
+};
+enum PenDir{
+	PEN_UP = 1,
+	PEN_RIGHT = 2,
+	PEN_DOWN = 3,
+	PEN_LEFT = 4
+};
+
+inline float clamp(float v, float min, float max){
+	return std::max(min, std::min(max, v));
+}
+inline float dot2(const float* a, const float* b){
+	return a[0] * b[0] + a[1] * b[1];
+}
+inline float* normalize2(const float* __restrict a, float* __restrict out){
+	float inv_mag = 1.f / std::sqrt(dot2(a, a));
+	out[0] = a[0]*inv_mag;
+	out[1] = a[1]*inv_mag;
+
+	return out;
+}
+
+inline PenDir get_primary_direction(const float* diff){
+	const float compass[8] = {
+		 0,  1, // UP
+		 1,  0, // RIGHT
+		 0, -1, // DOWN
+		-1,  0  // LEFT
+	};
+
+	float norm_res[2] = {0};
+	float max = 0;
+
+	int best = -1;
+	for (int i = 0; i < 4; ++i){
+		float dot = dot2(normalize2(diff, norm_res), &compass[i*2]);
+		if (dot > max){
+			max = dot;
+			best = i;
+		}
+	}
+
+	return (PenDir)(best + 1);
+}
+const Collision check_ball_collision(const Box2D& box){
+	float diff[2] = {
+		ball.x - box.x,
+		ball.y - box.y
+	};
+
+	float clamped[2] = {
+		clamp(diff[0], -box.hw, box.hw),
+		clamp(diff[1], -box.hh, box.hh)
+	};
+
+	float closest[2] = {
+		box.x + clamped[0],
+		box.y + clamped[1]
+	};
+
+	// Vector between circle center and closest point on box
+	diff[0] = closest[0] - ball.x;
+	diff[1] = closest[1] - ball.y;
+
+	// squaremag
+	float mag2 = diff[0] * diff[0] + diff[1] * diff[1];
+	Collision result;
+	result.result = (mag2 <= (ball.r * ball.r));
+
+	if (result.result){
+		result.primary_direction = get_primary_direction(diff);
+		result.penetration[0] = diff[0];
+		result.penetration[1] = diff[1];
+	}
+	return result;
+}
+
+void collide_ball_bricks(void){
+	std::vector<int> collision_index;
+
+	const float ball_vel[2] = {
+		ball.vx > 0 ? ball.vx : -ball.vx,
+		ball.vy > 0 ? ball.vy : -ball.vy
+	};
+
+	// Build list of bricks being collided with
+	for (size_t i = 0; i < bricks.size(); ++i){
+		auto col = check_ball_collision(bricks[i].box);
+
+		if (col.result){
+			if (bricks[i].type > 0){
+				collision_index.push_back(i);
+			}
+			// Reflection
+			PenDir dir = (PenDir)col.primary_direction;
+			float *diff_vector = col.penetration;
+
+			float pen[2] = {
+				ball.r - (diff_vector[0] > 0 ? diff_vector[0] : -diff_vector[0]),
+				ball.r - (diff_vector[1] > 0 ? diff_vector[1] : -diff_vector[1])
+			};
+
+			float *ppen = pen;
+			float pos_mul = 1;
+			float tp = 0, tv = 0;
+			float *bpos = &tp, *bvel = &tv;
+			int absindex = 0;
+
+			switch(dir){
+				case PEN_UP:{
+					ppen = &pen[1];
+					bpos = &ball.y;
+					bvel = &ball.vy;
+					pos_mul = -1;
+					absindex = 1;
+					break;
+				}
+				case PEN_RIGHT:{
+					ppen = &pen[0];
+					bpos = &ball.x;
+					bvel = &ball.vx;
+					pos_mul = -1;
+					absindex = 0;
+					break;
+				}
+				case PEN_DOWN:{
+					ppen = &pen[1];
+					bpos = &ball.y;
+					bvel = &ball.vy;
+					pos_mul = 1;
+					absindex = 1;
+					break;
+				}
+				case PEN_LEFT:{
+					ppen = &pen[0];
+					bpos = &ball.x;
+					bvel = &ball.vx;
+					pos_mul = 1;
+					absindex = 0;
+					break;
+				}
+			}
+			(*bpos) += (pos_mul * (*ppen));
+			(*bvel) = (pos_mul) * ball_vel[absindex];
+		}
+	}
+
+	// Remove from back to front
+	for (int i = collision_index.size() - 1; i >= 0; --i){
+		bricks[collision_index[i]] = bricks[bricks.size() - 1];
+		bricks.pop_back();
+	}
+	num_non_solid -= collision_index.size();
+}
 
 void reset_ball_and_paddle(float width, float height){
 	paddle.x = width * 0.5f;
@@ -205,15 +424,22 @@ void move_ball(float width, float height, float dT){
 		float down = ny + ball.r;
 
 		// Collide against walls
-		if (left <= 0 || right >= width){
+		if (left <= 0){
 			ball.vx *= -1;
+			nx = ball.r;
+		}
+		if (right >= width){
+			ball.vx *= -1;
+			nx = width - ball.r;
 		}
 		if (up <= 0){
 			ball.vy *= -1;
+			ny = ball.r;
 		}
 		if (up >= height){
 			// reset ball
 			reset_ball_and_paddle(width, height);
+			--lives;
 			nx = ball.x;
 			ny = ball.y;
 		}
@@ -288,6 +514,43 @@ void render_ball(void){
 
 	challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, &quad, ball_fg, ball_bg);
 }
+void render_bricks(void){
+	static auto solid_quad = find_or_fail("solid");
+	static auto brick_quad = find_or_fail("brick");
+
+	render_glyph glyph;
+	uint8_t bg[]       = {0, 0, 0, 255};
+	uint8_t solid_fg[] = {0, 0, 0, 255};
+	uint8_t brick_fg[][4] = {
+		{0, 255, 0, 255},
+		{0, 0, 255, 255}
+	};
+
+	uint8_t* fg = nullptr;
+	uv_quad* quad = nullptr;
+
+	for (Brick b : bricks){
+		if (b.type == 0){
+			fg = solid_fg;
+			quad = &solid_quad;
+		}
+		else{
+			fg = brick_fg[b.type - 1];
+			quad = &brick_quad;
+		}
+
+		glyph.x = b.box.x - b.box.hw;
+		glyph.y = b.box.y - b.box.hh;
+		glyph.w = 2 * b.box.hw;
+		glyph.h = 2 * b.box.hh;
+
+		challenge.api.buffer.push_RGBA_glyphs_ex(&glyph, 1, quad, fg, bg);
+	}
+}
+
+int test_win_lose(void){
+	return (num_non_solid == 0) - (lives == -1);
+}
 
 int main(int argc, const char** argv){
 	load_dynamic_libraries();
@@ -308,8 +571,8 @@ int main(int argc, const char** argv){
 	challenge.api.event.set_event_handler(SDL_KEYUP, EVENT_NAME(key_up));
 
 	challenge.api.graphics.set_clear_color(128, 128, 0);
-	uint8_t fg[4] = {255, 0, 0, 255};
-	uint8_t bg[4] = {255, 0, 0, 255};
+	//uint8_t fg[4] = {255, 0, 0, 255};
+	//uint8_t bg[4] = {255, 0, 0, 255};
 	
 	struct Clock_t{
 		float last, now;
@@ -356,20 +619,43 @@ int main(int argc, const char** argv){
 		uint8_t _bg[] = {0, 0, 0, 255};
 		render_text(fps_buf, 0, 0, 10, 20, _fg, _bg);
 	};
+	auto render_lives = [&](void){
+		uint8_t _fg[] = {255, 255, 255, 255};
+		uint8_t _bg[] = {0, 0, 0, 255};
+		char life_buf[80] = {0};
 
-	auto render_patch = [&](const std::string& name, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
-		render_glyph _glyph;
-		_glyph.x = x;
-		_glyph.y = y;
-		_glyph.w = w;
-		_glyph.h = h;
-
-		uv_quad quad = find_or_fail(name);
-
-		challenge.api.buffer.push_RGBA_glyphs_ex(&_glyph, 1, &quad, fg, bg);
+		int len = snprintf(life_buf, 80, "Lives Remaining: %d", lives);
+		render_text(life_buf, width - (10 * len), 0, 10, 20, _fg, _bg);
+	};
+	auto render_win = [&](void){
+		uint8_t _fg[] = {255, 255, 255, 255};
+		uint8_t _bg[] = {0, 0, 0, 255};
+		
+		render_text("You Win!", 0, 0, width / 7, height, _fg, _bg);
+		render_text("Press [ESC] to exit", 0, height - 20, 10, 20, _fg, _bg);
+	};
+	auto render_lose = [&](void){
+		uint8_t _fg[] = {255, 255, 255, 255};
+		uint8_t _bg[] = {0, 0, 0, 255};
+		
+		render_text("You Lose!", 0, 0, width / 8, height, _fg, _bg);
+		render_text("Press [ESC] to exit", 0, height - 20, 10, 20, _fg, _bg);
 	};
 
+	// auto render_patch = [&](const std::string& name, int x, int y, int w, int h, uint8_t* fg, uint8_t* bg){
+	// 	render_glyph _glyph;
+	// 	_glyph.x = x;
+	// 	_glyph.y = y;
+	// 	_glyph.w = w;
+	// 	_glyph.h = h;
+
+	// 	uv_quad quad = find_or_fail(name);
+
+	// 	challenge.api.buffer.push_RGBA_glyphs_ex(&_glyph, 1, &quad, fg, bg);
+	// };
+
 	reset_ball_and_paddle(width, height);
+	init_level(width, height * 0.5f);
 
 	while (challenge.api.graphics.running()){
 		challenge.api.event.poll_events();
@@ -390,6 +676,9 @@ int main(int argc, const char** argv){
 
 		move_paddle(width, height, dT);
 		move_ball(width, height, dT);
+		collide_ball_bricks();
+
+		int winlose = test_win_lose();
 
 		challenge.api.buffer.clear(width, height);
 
@@ -397,18 +686,28 @@ int main(int argc, const char** argv){
 
 		//render_patch("full", 0, 0, width, height, fg, bg);
 		//render_patch("ball", 32, 32, 16, 16, fg, bg);
-
-		int x = 0;
-		for (int i = 0; i < 5; ++i){
-			int step = width / 5;
-
-			render_patch("brick", x, 64, step, height/10, fg, bg);
-			x += step;
-		}
 		//render_patch("brick", 0, 64, width / 5, height / 10, fg, bg);
 		//render_patch("paddle", width / 2 - width / 10, height - height / 20, width / 5, height / 20, fg, fg);
-		render_paddle();
-		render_ball();
+		switch (winlose){
+			case -1:{
+				render_lose();
+				break;
+			}
+			case 0:{
+				render_paddle();
+				render_bricks();
+				render_ball();
+				
+				render_lives();
+				break;
+			}
+			case 1:{
+				render_win();
+				break;
+			}
+		}
+
+
 		
 		// Render FPS text
 		render_fps();
